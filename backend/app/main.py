@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import Base, SessionLocal, engine
 from app.core.errors import register_error_handlers
+from app.modules.agent.router import router as agent_router
 from app.modules.bookings.router import router as bookings_router
 from app.modules.payments.router import router as payments_router
 from app.modules.receipts.router import router as receipts_router
@@ -33,6 +34,7 @@ app.include_router(stores_router, prefix="/api")
 app.include_router(bookings_router, prefix="/api")
 app.include_router(receipts_router, prefix="/api")
 app.include_router(payments_router, prefix="/api")
+app.include_router(agent_router, prefix="/api")
 
 
 @app.get("/health")
