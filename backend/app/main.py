@@ -7,6 +7,7 @@ from app.core.config import settings
 from app.core.database import Base, SessionLocal, engine
 from app.core.errors import register_error_handlers
 from app.modules.bookings.router import router as bookings_router
+from app.modules.receipts.router import router as receipts_router
 from app.modules.stores import service as stores_service
 from app.modules.stores.router import router as stores_router
 
@@ -29,6 +30,7 @@ app.add_middleware(
 )
 app.include_router(stores_router, prefix="/api")
 app.include_router(bookings_router, prefix="/api")
+app.include_router(receipts_router, prefix="/api")
 
 
 @app.get("/health")
