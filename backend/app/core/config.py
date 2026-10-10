@@ -9,7 +9,8 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./godam.db"
     sarvam_api_key: str = ""
     anthropic_api_key: str = ""
-    agent_model: str = "claude-haiku-5-5"
+    gemini_api_key: str = ""
+    agent_model: str = "gemini-3.1-flash-lite"
 
 
 settings = Settings()
