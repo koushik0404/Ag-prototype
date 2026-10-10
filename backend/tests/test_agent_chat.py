@@ -13,23 +13,27 @@ from app.modules.agent import service as agent_service
 from app.modules.stores import service as stores_service
 
 
-class FakeClaude:
+class FakeGemini:
     """Plays back a fixed list of replies instead of calling the real API."""
 
     def __init__(self, replies):
         self.replies = list(replies)
-        self.messages = self
+        self.models = self
 
-    def create(self, **kwargs):
+    def generate_content(self, **kwargs):
         return self.replies.pop(0)
 
 
+def _reply(part):
+    return NS(candidates=[NS(content=NS(role="model", parts=[part]))])
+
+
 def says(t):
-    return NS(stop_reason="end_turn", content=[NS(type="text", text=t)])
+    return _reply(NS(text=t, function_call=None))
 
 
-def calls(name, args, call_id="t1"):
-    return NS(stop_reason="tool_use", content=[NS(type="tool_use", id=call_id, name=name, input=args)])
+def calls(name, args):
+    return _reply(NS(text=None, function_call=NS(name=name, args=args)))
 
 
 ORDER = {"store_id": 2, "crop": "Dry chilli", "quintals": 20, "months": 3}
@@ -59,7 +63,7 @@ def client(monkeypatch):
 
 
 def use_fake(monkeypatch, replies):
-    monkeypatch.setattr(agent_service, "get_client", lambda: FakeClaude(replies))
+    monkeypatch.setattr(agent_service, "get_client", lambda: FakeGemini(replies))
 
 
 def test_full_conversation_books_after_the_farmers_yes(client):
@@ -77,12 +81,12 @@ def test_full_conversation_books_after_the_farmers_yes(client):
     assert http.get("/api/stores/2").json()["free"] == 830
 
 
-def test_claude_cannot_book_without_the_farmers_yes(client):
+def test_ai_cannot_book_without_the_farmers_yes(client):
     http, mp = client
     use_fake(mp, [calls("prepare_booking", ORDER), says("Is that right?")])
     sid = http.post("/api/agent/chat", json={"message": "book it"}).json()["session_id"]
 
-    # Claude tries to book on its own, but the farmer said something else.
+    # The AI tries to book on its own, but the farmer said something else.
     use_fake(mp, [calls("create_booking", {}), says("Sorry, I need your yes first.")])
     r = http.post("/api/agent/chat", json={"session_id": sid, "message": "how much is the advance?"})
     assert r.json()["booking_id"] is None
@@ -91,6 +95,6 @@ def test_claude_cannot_book_without_the_farmers_yes(client):
 
 def test_missing_api_key_gives_a_clear_error(client, monkeypatch):
     http, _ = client
-    monkeypatch.setattr(settings, "anthropic_api_key", "")
+    monkeypatch.setattr(settings, "gemini_api_key", "")
     r = http.post("/api/agent/chat", json={"message": "hello"})
     assert r.status_code == 400
