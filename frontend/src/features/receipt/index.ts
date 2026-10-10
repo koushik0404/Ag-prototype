@@ -1,0 +1,1 @@
+export { ReceiptScreen } from './receipt.screen';

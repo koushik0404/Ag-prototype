@@ -1,0 +1,15 @@
+{
+  "title": "Storage & Godowns",
+  "subtitle": "Book · Hold",
+  "warehouse": "Warehouse",
+  "coldStore": "Cold store",
+  "maps": "Maps",
+  "nearby": "Nearby",
+  "crop": "Crop",
+  "quantity": "Quantity (quintals)",
+  "period": "Period",
+  "search": "SEARCH",
+  "storesNearYou": "Stores near you",
+  "reserve": "Reserve",
+  "payWithUpi": "Pay with UPI"
+}
