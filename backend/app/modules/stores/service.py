@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from app.core.errors import StoreNotFound
+from app.core.errors import SlotFull, StoreNotFound
 from app.modules.stores import repository
 from app.modules.stores.models import Store
 
@@ -29,4 +29,13 @@ def get_store(db: Session, store_id: int) -> Store:
     store = repository.get_by_id(db, store_id)
     if store is None:
         raise StoreNotFound("Store not found")
+    return store
+
+
+def reserve_space(db: Session, store_id: int, quintals: int) -> Store:
+    store = get_store(db, store_id)
+    if store.free < quintals:
+        raise SlotFull("Not enough free space in this store")
+    store.free -= quintals
+    db.commit()
     return store
