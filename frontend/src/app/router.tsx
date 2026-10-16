@@ -777,26 +777,28 @@ export function Router() {
       <style>{css}</style>
       {aiOpen && <div className="glow" aria-hidden="true" />}
 
-      {/* --- TOP GLOBAL HEADER BAR --- */}
-      <div style={{ background: C.g, padding: '12px 20px 0 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxSizing: 'border-box', width: '100%' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Ic n="menu" size={24} color="#FFF" />
+      {/* --- TOP GLOBAL HEADER BAR (hidden on the chat screen, which has its own header) --- */}
+      {currentScreen !== 'chatbot' && (
+        <div style={{ background: C.g, padding: '12px 20px 0 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxSizing: 'border-box', width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Ic n="menu" size={24} color="#FFF" />
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button
+              onClick={() => go('chatbot')}
+              style={{ background: '#ffffff', color: '#12502E', border: 'none', borderRadius: '10px', padding: '6px 12px', fontWeight: 800, fontSize: '12px', cursor: 'pointer' }}
+            >
+              {T('AI Chat')}
+            </button>
+            <button
+              onClick={() => go('login')}
+              style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '10px', padding: '6px 10px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+            >
+              {T('Logout')}
+            </button>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <button
-            onClick={() => go(currentScreen === 'chatbot' ? 'home' : 'chatbot')}
-            style={{ background: '#ffffff', color: '#12502E', border: 'none', borderRadius: '10px', padding: '6px 12px', fontWeight: 800, fontSize: '12px', cursor: 'pointer' }}
-          >
-            {currentScreen === 'chatbot' ? T('Dashboard') : T('AI Chat')}
-          </button>
-          <button
-            onClick={() => go('login')}
-            style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '10px', padding: '6px 10px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
-          >
-            {T('Logout')}
-          </button>
-        </div>
-      </div>
+      )}
 
       {currentScreen === 'chatbot' ? (
         <ChatInterface onBack={() => go('home')} />
