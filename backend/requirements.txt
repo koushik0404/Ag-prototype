@@ -3,5 +3,5 @@ uvicorn[standard]
 sqlalchemy
 pydantic-settings
 httpx
-anthropic
 pytest
+google-genai

@@ -155,6 +155,27 @@ const pStore = (x: string, ok: any[]) => {
   return null;
 };
 
+/* ---------- AI understanding (calls the backend) ---------- */
+// Sends what the farmer said to the backend. Returns the crop index, quintals
+// and months it found (null for anything not said), or null if the call fails.
+async function understand(text: string): Promise<{ crop: number | null; qty: number | null; months: number | null } | null> {
+  try {
+    const r = await fetch(`${API}/understand/booking`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    const crop = d.crop === 'chilli' ? 0 : d.crop === 'turmeric' ? 1 : d.crop === 'groundnut' ? 2 : null;
+    const qty = d.quintals && d.quintals > 0 && d.quintals <= 5000 ? d.quintals : null;
+    const months = [2, 3, 6].includes(d.months) ? d.months : null;
+    return { crop, qty, months };
+  } catch (_) {
+    return null;
+  }
+}
+
 /* ---------- small UI pieces ---------- */
 /* ----- Telugu screen labels ----- */
 const TE: Record<string, string> = {
@@ -518,6 +539,8 @@ export function Router() {
     setTimeout(fin, Math.min(text.length * 110 + 2500, 45000));
   }
 
+  // `parse` may be instant (returns a value) or async (returns a Promise),
+  // so the first question can ask the backend AI what the farmer said.
   function listen(parse: (x: string) => any, done: (v: any) => void, n = 0) {
     const id = A.current.run;
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -538,13 +561,18 @@ export function Router() {
       if (n < 2) say(E().retry, () => listen(parse, done, n + 1));
       else setAstate('tap');
     };
-    r.onresult = (e: any) => {
+    r.onresult = async (e: any) => {
       if (id !== A.current.run) return;
       const x = e.results[e.results.length - 1];
       setAtx(x[0].transcript);
       if (x.isFinal) {
         got = true;
-        const v = Array.from(x).map((a: any) => parse(a.transcript)).find((y) => y != null);
+        let v: any = null;
+        for (const a of Array.from(x) as any[]) {
+          v = await parse(a.transcript);
+          if (v != null) break;
+        }
+        if (id !== A.current.run) return;
         if (v != null) done(v);
         else retry();
       }
@@ -598,11 +626,28 @@ export function Router() {
   const YN = () => [{ l: E().y, v: true }, { l: E().n, v: false }];
   const nums = (a: number[]) => a.map((n) => ({ l: String(n), v: n }));
 
+  // First question. The farmer can answer with just the crop, or say everything
+  // in one sentence ("20 quintals chilli 3 months"). The backend AI reads it,
+  // and the app skips straight to the first detail that is still missing.
   function sCrop(first?: boolean) {
-    ask(first ? E().hi : E().crop, CROPS.map((c, i) => ({ l: (c as any)[ctx.current.lang], v: i })), pCrop, (v) => {
-      ctx.current.crop = CROPS[v].en;
-      setCrop(CROPS[v].en);
-      sQty();
+    const parse = async (x: string) => {
+      const c = pCrop(x);
+      const u = await understand(x);
+      if (u && (u.crop != null || u.qty != null || u.months != null)) {
+        return { crop: u.crop ?? c, qty: u.qty, months: u.months };
+      }
+      return c != null ? { crop: c, qty: null, months: null } : null;
+    };
+    ask(first ? E().hi : E().crop, CROPS.map((c, i) => ({ l: (c as any)[ctx.current.lang], v: i })), parse, (v) => {
+      // Tapping a crop chip gives a plain number; speech gives an object.
+      const r = typeof v === 'number' ? { crop: v, qty: null, months: null } : v;
+      if (r.crop != null) { ctx.current.crop = CROPS[r.crop].en; setCrop(CROPS[r.crop].en); }
+      if (r.qty != null) { ctx.current.qty = r.qty; setQuintals(String(r.qty)); }
+      if (r.months != null) { ctx.current.months = r.months; setMonths(String(r.months)); }
+      if (r.crop == null) sCrop(false);
+      else if (r.qty == null) sQty();
+      else if (r.months == null) sMo();
+      else sCf();
     });
   }
   function sQty() {

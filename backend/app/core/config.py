@@ -7,10 +7,10 @@ class Settings(BaseSettings):
     demo_mode: bool = True
     demo_otp: str = "123456"
     database_url: str = "sqlite:///./godam.db"
-    sarvam_api_key: str = ""
-    anthropic_api_key: str = ""
-    gemini_api_key: str = ""
-    agent_model: str = "gemini-3.1-flash-lite"
+    gemini_api_key: str = ""  # removed when the agent moves to OpenRouter
+    agent_model: str = "gemini-3.1-flash-lite"  # removed with it
+    openrouter_api_key: str = ""
+    openrouter_model: str = "openrouter/free"
 
 
 settings = Settings()

@@ -12,7 +12,7 @@ from app.modules.payments.router import router as payments_router
 from app.modules.receipts.router import router as receipts_router
 from app.modules.stores import service as stores_service
 from app.modules.stores.router import router as stores_router
-
+from app.modules.understand.router import router as understand_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -35,7 +35,7 @@ app.include_router(bookings_router, prefix="/api")
 app.include_router(receipts_router, prefix="/api")
 app.include_router(payments_router, prefix="/api")
 app.include_router(agent_router, prefix="/api")
-
+app.include_router(understand_router, prefix="/api")
 
 @app.get("/health")
 def health():
