@@ -4,4 +4,4 @@ sqlalchemy
 pydantic-settings
 httpx
 anthropic
-pytest
+pytestgoogle-genai

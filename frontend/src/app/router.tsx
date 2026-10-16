@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
+import ChatInterface from '../features/chatbot/ChatInterface';
+import LoginInterface from '../features/auth/LoginInterface';
 
-export type ScreenType = 'home' | 'map' | 'stores' | 'reserve' | 'pin' | 'receipt';
+export type ScreenType = 'home' | 'map' | 'stores' | 'reserve' | 'pin' | 'receipt' | 'chatbot' | 'login';
 
 const API = 'http://127.0.0.1:8000/api';
 
@@ -11,22 +13,23 @@ const C = {
 
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Mukta:wght@400;600;800&family=Noto+Sans+Telugu:wght@400;700&display=swap');
-body{margin:0;background:#E1E4DA;font-family:Mukta,"Noto Sans Telugu",system-ui,sans-serif}
+body{margin:0;background:#E1E4DA;font-family:Mukta,"Noto Sans Telugu",system-ui,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;min-height:100dvh;box-sizing:border-box;overflow-y:scroll;}
+* { box-sizing: border-box; }
 input{font-family:inherit}
 input:focus{outline:none}
 @property --a{syntax:"<angle>";inherits:false;initial-value:0deg}
 @keyframes spin{to{--a:360deg}}
-@keyframes pulse{0%{box-shadow:0 0 0 0 #9B5CFF88}100%{box-shadow:0 0 0 16px #9B5CFF00}}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(155,92,255,0.6)}70%{box-shadow:0 0 0 20px rgba(155,92,255,0)}100%{box-shadow:0 0 0 0 rgba(155,92,255,0)}}
 .glow{position:fixed;top:0;bottom:0;left:50%;width:100%;max-width:430px;transform:translateX(-50%);pointer-events:none;z-index:50}
 .glow::before{content:"";position:absolute;inset:0;padding:3px;background:conic-gradient(from var(--a),#4F8CFF,#9B5CFF,#FF5CAA,#FFB04F,#4F8CFF);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:spin 6s linear infinite}
 .glow::after{content:"";position:absolute;inset:0;box-shadow:inset 0 0 26px 5px #7864ff59,inset 0 0 70px 8px #ff5caa2e}
-.micon{animation:pulse 1.2s infinite}
+.micon{animation:pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite}
 `;
 
 const ICON: Record<string, string> = {
   menu: 'M4 7h16M4 12h16M4 17h16',
   warehouse: 'M3 10l9-6 9 6v10H3z M9 20v-6h6v6',
-  snow: 'M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9',
+  cold: 'M12 2v20M17 5l-5 5-5-5M17 19l-5-5-5 5M2 12h20M5 7l5 5-5 5M19 7l-5 5 5 5',
   pin: 'M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11z M12 7.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z',
   search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z M21 21l-5-5',
   wheat: 'M12 21V9 M12 9c-2.5 0-4-1.7-4-4 2.5 0 4 1.7 4 4z M12 9c2.5 0 4-1.7 4-4-2.5 0-4 1.7-4 4z M12 15c-2.5 0-4-1.7-4-4 2.5 0 4 1.7 4 4z M12 15c2.5 0 4-1.7 4-4-2.5 0-4 1.7-4 4z',
@@ -43,7 +46,7 @@ const ICON: Record<string, string> = {
 
 const Ic = ({ n, size = 18, color = C.g, sw = 1.8 }: { n: string; size?: number; color?: string; sw?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-    <path d={ICON[n]} />
+    <path d={ICON[n] || ICON.warehouse} />
   </svg>
 );
 
@@ -64,7 +67,6 @@ const primary = { width: '100%', backgroundColor: C.g, color: '#FFF', border: 'n
 const outline = { width: '100%', backgroundColor: 'transparent', color: C.g, border: `1.5px solid ${C.g}`, padding: '14px', borderRadius: '12px', fontFamily: 'inherit', fontWeight: 800, fontSize: '16px', cursor: 'pointer' } as const;
 const fieldInput = { border: 'none', background: 'transparent', color: C.ink, fontSize: '16px', fontWeight: 800, padding: 0, width: '100%' } as const;
 
-/* ---------- voice assistant data ---------- */
 const CROPS = [
   { en: 'Dry chilli', te: 'ఎండు మిరప' },
   { en: 'Turmeric', te: 'పసుపు' },
@@ -103,7 +105,7 @@ const V: any = {
     pick: (n: any) => `ఏది కావాలి? ఒకటి నుండి ${n} వరకు ఒక సంఖ్య చెప్పండి.`,
     sf: (s: any) => `మీరు ${s.name} ఎంచుకున్నారు. సరైనదేనా? అవును లేదా కాదు అని చెప్పండి.`,
     fin: (s: any, c: any, q: any, m: any, f: any, a: any) => `ఒకసారి సరిచూడండి. ${s.name}. ${c}, ${q} క్వింటాళ్లు, ${m} నెలలు. నిల్వ రుసుము ${f} రూపాయలు. స్థలం కోసం ఇప్పుడు ${a} రూపాయలు చెల్లించాలి. చెల్లింపుకు వెళ్లమంటారా? అవును లేదా కాదు అని చెప్పండి.`,
-    pin: 'ఇప్పుడు మీ UPI పిన్ మీరే నమోదు చేయండి. నేను వినను, చూడను.',
+    pin: 'ఇప్పుడు మీ పిన్ మీరే నమోదు చేయండి. నేను వినను, చూడను.',
     done: 'అయిపోయింది! మీ స్థలం బుక్ అయింది. మీ ఈ-రసీదు స్క్రీన్ మీద ఉంది.',
     none: 'ఇంత పరిమాణానికి ఖాళీ ఉన్న గోదాము లేదు. తక్కువ పరిమాణం ప్రయత్నిద్దాం.',
     again: 'సరే, మళ్లీ మొదలుపెడదాం.',
@@ -112,51 +114,6 @@ const V: any = {
   },
 };
 
-const TN: Record<string, number> = {
-  'ఒకటి': 1, 'ఒక': 1, 'రెండు': 2, 'మూడు': 3, 'నాలుగు': 4, 'ఐదు': 5, 'అయిదు': 5, 'ఆరు': 6, 'ఏడు': 7, 'ఎనిమిది': 8, 'తొమ్మిది': 9, 'పది': 10,
-  'ఇరవై': 20, 'ముప్పై': 30, 'నలభై': 40, 'యాభై': 50, 'అరవై': 60, 'డెబ్బై': 70, 'ఎనభై': 80, 'తొంబై': 90, 'వంద': 100, 'వందలు': 100,
-  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
-  twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90, hundred: 100,
-};
-
-function num(x: string): number | null {
-  x = x.replace(/[౦-౯]/g, (d) => String('౦౧౨౩౪౫౬౭౮౯'.indexOf(d)));
-  const m = x.match(/\d+/);
-  if (m) return +m[0];
-  let s = 0;
-  let f = false;
-  for (const w of x.toLowerCase().split(/[\s,.]+/)) {
-    const v = TN[w];
-    if (v) {
-      f = true;
-      s = v === 100 ? (s || 1) * 100 : s + v;
-    }
-  }
-  return f ? s : null;
-}
-const pQty = (x: string) => { const n = num(x); return n && n > 0 && n <= 5000 ? n : null; };
-const pMo = (x: string) => { const n = num(x); return n && [2, 3, 6].includes(n) ? n : null; };
-const pCrop = (x: string) => {
-  x = x.toLowerCase();
-  return /chill|chili|mirch|మిర/.test(x) ? 0 : /turmeric|haldi|పసుపు/.test(x) ? 1 : /ground|peanut|palli|పల్లీ|వేరుశ/.test(x) ? 2 : null;
-};
-const pYN = (x: string) => {
-  x = x.toLowerCase();
-  if (/\b(no|nope|wrong|not|kadu|kaadu|vaddu|vaddhu)\b|కాదు|వద్దు|లేదు|తప్పు/.test(x)) return false;
-  if (/\b(yes|yeah|yep|yup|ok|okay|sure|correct|right|avunu|avnu|sare|sari|alage)\b|అవును|ఔను|సరే|సరి|అలాగే|కరెక్ట్/.test(x)) return true;
-  return null;
-};
-const pStore = (x: string, ok: any[]) => {
-  const n = num(x);
-  if (n && n >= 1 && n <= ok.length) return ok[n - 1];
-  x = x.toLowerCase();
-  const tests: [RegExp, number][] = [[/lakshmi|laxmi|లక్ష్మి/, 1], [/vijaya|విజయ/, 2], [/kisan|కిసాన్|కిషన్/, 3]];
-  for (const [r, id] of tests) if (r.test(x)) { const s = ok.find((q) => q.id === id); if (s) return s; }
-  return null;
-};
-
-/* ---------- small UI pieces ---------- */
-/* ----- Telugu screen labels ----- */
 const TE: Record<string, string> = {
   'Storage & Godowns': 'నిల్వ & గోదాములు',
   'Book · Hold': 'బుక్ · హోల్డ్',
@@ -202,9 +159,10 @@ const TE: Record<string, string> = {
   'Schematic map': 'సూచనా పటం',
   'Loading stores…': 'గోదాములు లోడ్ అవుతున్నాయి…',
   'No stores of this type yet.': 'ఈ రకం గోదాములు ఇంకా లేవు.',
-  'Mangalagiri': 'మంగళగిరి',
-  'Tenali': 'తెనాలి',
-  'Guntur': 'గుంటూరు',
+  'AI Chat': 'AI చాట్',
+  'Dashboard': 'డాష్‌బోర్డ్',
+  'Logout': 'లాగ్ అవుట్',
+  'Stop': 'ఆపు',
 };
 let CUR = 'en';
 const T = (x: string) => (CUR === 'te' && TE[x]) || x;
@@ -234,7 +192,7 @@ const SparkBtn = ({ on, dark, onClick }: { on: boolean; dark?: boolean; onClick:
 
 const Tile = ({ cold }: { cold: boolean }) => (
   <div style={{ width: '50px', height: '50px', borderRadius: '14px', background: C.g2, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-    <Ic n={cold ? 'snow' : 'warehouse'} size={23} />
+    <Ic n={cold ? 'cold' : 'warehouse'} size={23} color={cold ? C.blue : C.g} />
   </div>
 );
 
@@ -282,7 +240,7 @@ const Field = ({ icon, label, last, right, children }: { icon: string; label: st
 const Tabs = ({ active, onPick }: { active: 'warehouse' | 'cold_store' | 'maps'; onPick: (t: 'warehouse' | 'cold_store' | 'maps') => void }) => {
   const items: ['warehouse' | 'cold_store' | 'maps', string, string][] = [
     ['warehouse', 'Warehouse', 'warehouse'],
-    ['cold_store', 'Cold store', 'snow'],
+    ['cold_store', 'Cold store', 'cold'],
     ['maps', 'Maps', 'pin'],
   ];
   return (
@@ -350,7 +308,7 @@ const Pin = ({ x, y, cold }: { x: number; y: number; cold: boolean }) => (
   <g transform={`translate(${x} ${y})`}>
     <path d="M0 0C-8-10-18-20-18-34A18 18 0 0 1 18-34C18-20 8-10 0 0Z" fill={cold ? C.blue : C.g} stroke="#FFF" strokeWidth="2" />
     <g transform="translate(-9 -43) scale(.75)" fill="none" stroke="#FFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <path d={cold ? ICON.snow : ICON.warehouse} />
+      <path d={cold ? ICON.cold : ICON.warehouse} />
     </g>
   </g>
 );
@@ -374,9 +332,8 @@ const MapView = ({ stores }: { stores: any[] }) => {
   );
 };
 
-/* ---------- the app ---------- */
 export function Router() {
-  const [currentScreen, setCurrentScreen] = useState<ScreenType>('home');
+  const [currentScreen, setCurrentScreen] = useState<ScreenType>('login');
   const [activeTab, setActiveTab] = useState<'warehouse' | 'cold_store' | 'maps'>('warehouse');
   const [crop, setCrop] = useState('Dry chilli');
   const [quintals, setQuintals] = useState('20');
@@ -387,7 +344,6 @@ export function Router() {
   const [pinCode, setPinCode] = useState('');
   const [lang, setLang] = useState('en');
 
-  // AI mode
   const [aiOpen, setAiOpen] = useState(false);
   const [aq, setAq] = useState('');
   const [atx, setAtx] = useState('');
@@ -437,7 +393,6 @@ export function Router() {
   const advance = selected ? Math.round(selected.total * 0.1) : 0;
   const searchOff = !crop.trim() || q < 1 || m < 1;
 
-  /* ----- navigation ----- */
   function go(s: ScreenType) {
     ctx.current.screen = s;
     setCurrentScreen(s);
@@ -473,7 +428,6 @@ export function Router() {
     if (A.current.on) agent();
   }
 
-  /* ----- voice helpers ----- */
   const vl = () => (ctx.current.lang === 'te' ? 'te-IN' : 'en-IN');
   const E = () => V[ctx.current.lang];
   const cl = () => {
@@ -482,9 +436,9 @@ export function Router() {
   };
 
   function stopMic() {
-    try { A.current.rec && A.current.rec.abort(); } catch (_) { /* ignore */ }
+    try { A.current.rec && A.current.rec.abort(); } catch (_) {}
     A.current.rec = null;
-    try { (window as any).speechSynthesis && (window as any).speechSynthesis.cancel(); } catch (_) { /* ignore */ }
+    try { (window as any).speechSynthesis && (window as any).speechSynthesis.cancel(); } catch (_) {}
   }
 
   function say(text: string, cb?: () => void) {
@@ -514,7 +468,7 @@ export function Router() {
       u.onend = fin;
       u.onerror = fin;
       synth.speak(u);
-    } catch (_) { /* ignore */ }
+    } catch (_) {}
     setTimeout(fin, Math.min(text.length * 110 + 2500, 45000));
   }
 
@@ -583,18 +537,6 @@ export function Router() {
     A.current.cb(c.v);
   }
 
-  function micTap() {
-    const was = astate === 'listen';
-    A.current.run++;
-    stopMic();
-    if (was) setAstate('tap');
-    else if (A.current.parse) {
-      setAerr(false);
-      listen(A.current.parse, A.current.cb);
-    }
-  }
-
-  /* ----- the conversation ----- */
   const YN = () => [{ l: E().y, v: true }, { l: E().n, v: false }];
   const nums = (a: number[]) => a.map((n) => ({ l: String(n), v: n }));
 
@@ -710,7 +652,6 @@ export function Router() {
     }
   }
 
-  /* ----- PIN keypad ----- */
   function key(k: string) {
     if (k === '⌫') setPinCode((p) => p.slice(0, -1));
     else setPinCode((p) => (p.length < 6 ? p + k : p));
@@ -731,189 +672,214 @@ export function Router() {
     return () => clearTimeout(t);
   }, [pinCode]);
 
-  /* ----- layout ----- */
   const hero = currentScreen === 'home' || currentScreen === 'map';
-  const titles: Record<string, string> = { stores: T('Stores near you'), reserve: T('Reserve slot'), pin: T('Enter UPI PIN'), receipt: T('Your e-receipt') };
+  const titles: Record<string, string> = { stores: T('Stores near you'), reserve: T('Reserve slot'), pin: T('Enter UPI PIN'), receipt: T('Your e-receipt'), chatbot: T('AI Chat'), login: T('Sign In') };
   const pad = { padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' } as const;
   const e = V[lang];
   const status: Record<string, string> = { speak: e.sp, listen: e.li, tap: e.tp, idle: e.pn };
 
+  if (currentScreen === 'login') {
+    return <LoginInterface onLoginSuccess={() => go('home')} />;
+  }
+
   return (
-    <div style={{ width: '100%', maxWidth: '430px', margin: '0 auto', backgroundColor: C.bg, color: C.ink, minHeight: '100vh', fontFamily: 'Mukta, "Noto Sans Telugu", system-ui, sans-serif', boxShadow: '0 20px 60px rgba(0,0,0,.25)', boxSizing: 'border-box', paddingBottom: aiOpen ? '330px' : 0 }}>
+    <div style={{ width: '100%', maxWidth: '430px', minWidth: '430px', margin: '0 auto', backgroundColor: C.bg, color: C.ink, minHeight: '100vh', minHeight: '100dvh', fontFamily: 'Mukta, "Noto Sans Telugu", system-ui, sans-serif', boxShadow: '0 20px 60px rgba(0,0,0,.25)', boxSizing: 'border-box', paddingBottom: aiOpen ? '330px' : 0, position: 'relative', overflowX: 'hidden' }}>
       <style>{css}</style>
       {aiOpen && <div className="glow" aria-hidden="true" />}
 
-      {hero ? (
-        <div style={{ background: C.g, color: '#FFF', padding: '16px 20px 48px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Ic n="menu" size={24} color="#FFF" />
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <SparkBtn dark on={aiOpen} onClick={toggleAI} />
-              <Lang dark lang={lang} onPick={changeLang} />
-            </div>
-          </div>
-          <div style={{ fontSize: '26px', fontWeight: 800, marginTop: '18px', lineHeight: 1.15 }}>{T('Storage & Godowns')}</div>
-          <div style={{ fontSize: '14px', opacity: 0.85, marginTop: '2px' }}>{T('Book · Hold')}</div>
+      {/* --- TOP GLOBAL HEADER BAR --- */}
+      <div style={{ background: C.g, padding: '12px 20px 0 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxSizing: 'border-box', width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Ic n="menu" size={24} color="#FFF" />
         </div>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button
+            onClick={() => go(currentScreen === 'chatbot' ? 'home' : 'chatbot')}
+            style={{ background: '#ffffff', color: '#12502E', border: 'none', borderRadius: '10px', padding: '6px 12px', fontWeight: 800, fontSize: '12px', cursor: 'pointer' }}
+          >
+            {currentScreen === 'chatbot' ? T('Dashboard') : T('AI Chat')}
+          </button>
+          <button
+            onClick={() => go('login')}
+            style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '10px', padding: '6px 10px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+          >
+            {T('Logout')}
+          </button>
+        </div>
+      </div>
+
+      {currentScreen === 'chatbot' ? (
+        <ChatInterface onBack={() => go('home')} />
       ) : (
-        <div style={{ background: '#FFF', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px', borderBottom: `1px solid ${C.line}` }}>
-          {currentScreen !== 'receipt' ? (
-            <button onClick={back} aria-label="Back" style={{ width: '40px', height: '40px', borderRadius: '12px', border: `1px solid ${C.line}`, background: '#FFF', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Ic n="back" size={20} color={C.ink} sw={2.2} />
-            </button>
+        <>
+          {hero ? (
+            <div style={{ background: C.g, color: '#FFF', padding: '16px 20px 48px', boxSizing: 'border-box', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ opacity: 0 }}>-</div>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <SparkBtn dark on={aiOpen} onClick={toggleAI} />
+                  <Lang dark lang={lang} onPick={changeLang} />
+                </div>
+              </div>
+              <div style={{ fontSize: '26px', fontWeight: 800, marginTop: '18px', lineHeight: 1.15 }}>{T('Storage & Godowns')}</div>
+              <div style={{ fontSize: '14px', opacity: 0.85, marginTop: '2px' }}>{T('Book · Hold')}</div>
+            </div>
           ) : (
-            <div style={{ width: '40px' }} />
-          )}
-          <div style={{ flex: 1, fontSize: '17px', fontWeight: 800 }}>{titles[currentScreen]}</div>
-          <SparkBtn on={aiOpen} onClick={toggleAI} />
-          <Lang lang={lang} onPick={changeLang} />
-        </div>
-      )}
-
-      {error && <div style={{ ...card, margin: '16px', padding: '12px', color: C.red, fontSize: '14px' }}>{error}</div>}
-
-      {/* HOME */}
-      {currentScreen === 'home' && (
-        <>
-          <div style={{ margin: '-28px 16px 0', ...card, boxShadow: '0 8px 24px rgba(0,0,0,.08)', overflow: 'hidden' }}>
-            <Tabs active={activeTab} onPick={pickTab} />
-            <Field icon="search" label="Nearby" right={
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', border: `1px solid ${C.line}`, borderRadius: '20px', padding: '7px 12px', fontSize: '13px', fontWeight: 800, color: C.g }}>
-                <Ic n="near" size={14} /> {T('Near me')}
-              </span>
-            }>
-              <div style={{ fontSize: '16px', fontWeight: 800 }}>{T('Guntur, Andhra Pradesh')}</div>
-            </Field>
-            <Field icon="wheat" label="Crop">
-              <input style={fieldInput} value={crop} onChange={(ev) => { setCrop(ev.target.value); ctx.current.crop = ev.target.value; }} placeholder="e.g. Dry chilli" />
-            </Field>
-            <Field icon="weight" label="Quantity (quintals)">
-              <input style={fieldInput} type="number" min="1" value={quintals} onChange={(ev) => { setQuintals(ev.target.value); ctx.current.qty = Number(ev.target.value) || 0; }} />
-            </Field>
-            <Field icon="cal" label="Period (months)" last>
-              <input style={fieldInput} type="number" min="1" value={months} onChange={(ev) => { setMonths(ev.target.value); ctx.current.months = Number(ev.target.value) || 0; }} />
-            </Field>
-            <div style={{ padding: '4px 16px 16px' }}>
-              <button disabled={searchOff} onClick={() => go('stores')} style={{ ...primary, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: searchOff ? 0.5 : 1 }}>
-                <Ic n="search" size={16} color="#FFF" sw={2.2} /> {T('SEARCH')}
-              </button>
-            </div>
-          </div>
-
-          <div style={pad}>
-            <div style={{ fontSize: '17px', fontWeight: 800 }}>{T('Stores near you')}</div>
-            {homeList.map((s) => <CompactCard key={s.id} s={s} onPick={pickStore} />)}
-            {!error && rawStores.length > 0 && homeList.length === 0 && <div style={{ color: C.mute, fontSize: '14px' }}>{T('No stores of this type yet.')}</div>}
-            {!error && rawStores.length === 0 && <div style={{ color: C.mute, fontSize: '14px' }}>{T('Loading stores…')}</div>}
-          </div>
-        </>
-      )}
-
-      {/* MAP */}
-      {currentScreen === 'map' && (
-        <>
-          <div style={{ margin: '-28px 16px 0', ...card, borderRadius: '16px 16px 0 0', boxShadow: '0 8px 24px rgba(0,0,0,.08)', overflow: 'hidden' }}>
-            <Tabs active="maps" onPick={pickTab} />
-          </div>
-          <div style={pad}>
-            <MapView stores={stores} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '13px', fontWeight: 800 }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><i style={{ width: '10px', height: '10px', borderRadius: '50%', background: C.g, display: 'inline-block' }} />{T('Warehouse')}</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><i style={{ width: '10px', height: '10px', borderRadius: '50%', background: C.blue, display: 'inline-block' }} />{T('Cold store')}</span>
-              <span style={{ marginLeft: 'auto', color: C.mute, fontWeight: 600 }}>{T('Schematic map')}</span>
-            </div>
-            <div style={{ fontSize: '17px', fontWeight: 800, marginTop: '4px' }}>{T('Stores near you')}</div>
-            {stores.map((s) => <CompactCard key={s.id} s={s} onPick={pickStore} />)}
-          </div>
-        </>
-      )}
-
-      {/* STORE LIST */}
-      {currentScreen === 'stores' && (
-        <div style={pad}>
-          <Stepper />
-          <div style={{ fontSize: '13px', color: C.mute }}>{q} ({T('quintals')}) · {crop} · {m} {T('months')}</div>
-          {stores.map((s) => <FullCard key={s.id} s={s} onPick={pickStore} />)}
-        </div>
-      )}
-
-      {/* RESERVE */}
-      {currentScreen === 'reserve' && selected && (
-        <div style={pad}>
-          <Stepper />
-          <div style={{ ...card, padding: '16px' }}>
-            <div style={{ display: 'flex', gap: '14px', alignItems: 'center', paddingBottom: '10px' }}>
-              <Tile cold={selected.cold} />
-              <div>
-                <div style={{ fontSize: '15px', fontWeight: 800 }}>{selected.name}</div>
-                <div style={{ fontSize: '13px', color: C.mute }}>{T(selected.location)}</div>
+            <div style={{ background: C.g, color: '#FFF', padding: '16px 20px 20px 20px', display: 'flex', alignItems: 'center', gap: '12px', boxSizing: 'border-box', width: '100%' }}>
+              {currentScreen !== 'receipt' ? (
+                <button onClick={back} aria-label="Back" style={{ width: '38px', height: '38px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Ic n="back" size={20} color="#FFF" sw={2.2} />
+                </button>
+              ) : (
+                <div style={{ width: '38px', flexShrink: 0 }} />
+              )}
+              <div style={{ flex: 1, fontSize: '20px', fontWeight: 800, color: '#FFF', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{titles[currentScreen]}</div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+                <SparkBtn dark on={aiOpen} onClick={toggleAI} />
+                <Lang dark lang={lang} onPick={changeLang} />
               </div>
             </div>
-            <Line a="Crop" b={crop} />
-            <Line a="Quantity (quintals)" b={String(q)} />
-            <Line a="Period" b={`${m} ${T('months')}`} />
-            <Line a="Storage fee" b={`₹${inr(selected.total)}`} />
-            <Line a="Pay now to hold slot (10%)" b={`₹${inr(advance)}`} green last />
-          </div>
-          <div style={{ fontSize: '13px', color: C.mute }}>{T('The rest is paid when you take out your produce.')}</div>
-          <button onClick={() => go('pin')} style={primary}>{T('Pay with UPI')} · ₹{inr(advance)}</button>
-        </div>
+          )}
+
+          {error && <div style={{ ...card, margin: '16px', padding: '12px', color: C.red, fontSize: '14px' }}>{error}</div>}
+
+          {currentScreen === 'home' && (
+            <>
+              <div style={{ margin: '-28px 16px 0', ...card, boxShadow: '0 8px 24px rgba(0,0,0,.08)', overflow: 'hidden' }}>
+                <Tabs active={activeTab} onPick={pickTab} />
+                <Field icon="search" label="Nearby" right={
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', border: `1px solid ${C.line}`, borderRadius: '20px', padding: '7px 12px', fontSize: '13px', fontWeight: 800, color: C.g }}>
+                    <Ic n="near" size={14} /> {T('Near me')}
+                  </span>
+                }>
+                  <div style={{ fontSize: '16px', fontWeight: 800 }}>{T('Guntur, Andhra Pradesh')}</div>
+                </Field>
+                <Field icon="wheat" label="Crop">
+                  <input style={fieldInput} value={crop} onChange={(ev) => { setCrop(ev.target.value); ctx.current.crop = ev.target.value; }} placeholder="e.g. Dry chilli" />
+                </Field>
+                <Field icon="weight" label="Quantity (quintals)">
+                  <input style={fieldInput} type="number" min="1" value={quintals} onChange={(ev) => { setQuintals(ev.target.value); ctx.current.qty = Number(ev.target.value) || 0; }} />
+                </Field>
+                <Field icon="cal" label="Period (months)" last>
+                  <input style={fieldInput} type="number" min="1" value={months} onChange={(ev) => { setMonths(ev.target.value); ctx.current.months = Number(ev.target.value) || 0; }} />
+                </Field>
+                <div style={{ padding: '4px 16px 16px' }}>
+                  <button disabled={searchOff} onClick={() => go('stores')} style={{ ...primary, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: searchOff ? 0.5 : 1 }}>
+                    <Ic n="search" size={16} color="#FFF" sw={2.2} /> {T('SEARCH')}
+                  </button>
+                </div>
+              </div>
+
+              <div style={pad}>
+                <div style={{ fontSize: '17px', fontWeight: 800 }}>{T('Stores near you')}</div>
+                {homeList.map((s) => <CompactCard key={s.id} s={s} onPick={pickStore} />)}
+                {!error && rawStores.length > 0 && homeList.length === 0 && <div style={{ color: C.mute, fontSize: '14px' }}>{T('No stores of this type yet.')}</div>}
+                {!error && rawStores.length === 0 && <div style={{ color: C.mute, fontSize: '14px' }}>{T('Loading stores…')}</div>}
+              </div>
+            </>
+          )}
+
+          {currentScreen === 'map' && (
+            <>
+              <div style={{ margin: '-28px 16px 0', ...card, borderRadius: '16px 16px 0 0', boxShadow: '0 8px 24px rgba(0,0,0,.08)', overflow: 'hidden' }}>
+                <Tabs active="maps" onPick={pickTab} />
+              </div>
+              <div style={pad}>
+                <MapView stores={stores} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '13px', fontWeight: 800 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><i style={{ width: '10px', height: '10px', borderRadius: '50%', background: C.g, display: 'inline-block' }} />{T('Warehouse')}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><i style={{ width: '10px', height: '10px', borderRadius: '50%', background: C.blue, display: 'inline-block' }} />{T('Cold store')}</span>
+                  <span style={{ marginLeft: 'auto', color: C.mute, fontWeight: 600 }}>{T('Schematic map')}</span>
+                </div>
+                <div style={{ fontSize: '17px', fontWeight: 800, marginTop: '4px' }}>{T('Stores near you')}</div>
+                {stores.map((s) => <CompactCard key={s.id} s={s} onPick={pickStore} />)}
+              </div>
+            </>
+          )}
+
+          {currentScreen === 'stores' && (
+            <div style={pad}>
+              <Stepper />
+              <div style={{ fontSize: '13px', color: C.mute }}>{q} ({T('quintals')}) · {crop} · {m} {T('months')}</div>
+              {stores.map((s) => <FullCard key={s.id} s={s} onPick={pickStore} />)}
+            </div>
+          )}
+
+          {currentScreen === 'reserve' && selected && (
+            <div style={pad}>
+              <Stepper />
+              <div style={{ ...card, padding: '16px' }}>
+                <div style={{ display: 'flex', gap: '14px', alignItems: 'center', paddingBottom: '10px' }}>
+                  <Tile cold={selected.cold} />
+                  <div>
+                    <div style={{ fontSize: '15px', fontWeight: 800 }}>{selected.name}</div>
+                    <div style={{ fontSize: '13px', color: C.mute }}>{T(selected.location)}</div>
+                  </div>
+                </div>
+                <Line a="Crop" b={crop} />
+                <Line a="Quantity (quintals)" b={String(q)} />
+                <Line a="Period" b={`${m} ${T('months')}`} />
+                <Line a="Storage fee" b={`₹${inr(selected.total)}`} />
+                <Line a="Pay now to hold slot (10%)" b={`₹${inr(advance)}`} green last />
+              </div>
+              <div style={{ fontSize: '13px', color: C.mute }}>{T('The rest is paid when you take out your produce.')}</div>
+              <button onClick={() => go('pin')} style={primary}>{T('Pay with UPI')} · ₹{inr(advance)}</button>
+            </div>
+          )}
+
+          {currentScreen === 'pin' && selected && (
+            <div style={pad}>
+              <Stepper />
+              <div style={{ ...card, padding: '18px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '8px' }}>
+                <div style={{ width: '50px', height: '50px', borderRadius: '14px', background: C.g2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ic n="shield" size={24} />
+                </div>
+                <div style={{ fontSize: '14px', color: C.mute }}>{selected.name}</div>
+                <div style={{ fontSize: '26px', fontWeight: 800 }}>₹{inr(advance)}</div>
+                <div style={{ display: 'flex', gap: '12px', margin: '8px 0' }}>
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <i key={i} style={{ width: '14px', height: '14px', borderRadius: '50%', border: `2px solid ${C.g}`, background: i < pinCode.length ? C.g : 'transparent', display: 'inline-block' }} />
+                  ))}
+                </div>
+                <div style={{ fontSize: '14px', color: C.mute }}>{T('Only you enter your PIN. Nobody else hears or sees it.')}</div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '10px' }}>
+                {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'].map((k, i) =>
+                  k === '' ? <span key={i} /> : (
+                    <button key={i} onClick={() => key(k)} aria-label={k} style={{ height: '56px', borderRadius: '14px', border: `1px solid ${C.line}`, background: '#FFF', color: C.ink, fontFamily: 'inherit', fontSize: '22px', fontWeight: 600, cursor: 'pointer' }}>{k}</button>
+                  )
+                )}
+              </div>
+            </div>
+          )}
+
+          {currentScreen === 'receipt' && selected && (
+            <div style={pad}>
+              <Stepper done />
+              <div style={{ ...card, overflow: 'hidden' }}>
+                <div style={{ background: C.g, color: '#FFF', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '3px dashed #FFF' }}>
+                  <span style={{ fontSize: '16px', fontWeight: 800 }}>{T('Warehouse receipt')}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'rgba(255,255,255,.9)', color: C.g, fontSize: '12px', fontWeight: 800, padding: '4px 12px', borderRadius: '12px' }}>
+                    <Ic n="check" size={12} sw={2.6} /> {T('Active')}
+                  </span>
+                </div>
+                <div style={{ padding: '4px 16px 10px' }}>
+                  <Line a={selected.name} b={T(selected.location)} />
+                  <Line a={crop} b={String(q)} />
+                  <Line a="Grade" b="A" />
+                  <Line a="Insurance" b={`₹${inr(selected.insured)}/t`} />
+                  <Line a="Advance paid" b={`₹${inr(advance)}`} />
+                  <Line a="No." b="GDM-2026-0418" last />
+                </div>
+              </div>
+              <button onClick={() => go('home')} style={outline}>{T('Book another slot')}</button>
+            </div>
+          )}
+        </>
       )}
 
-      {/* PIN */}
-      {currentScreen === 'pin' && selected && (
-        <div style={pad}>
-          <Stepper />
-          <div style={{ ...card, padding: '18px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '8px' }}>
-            <div style={{ width: '50px', height: '50px', borderRadius: '14px', background: C.g2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Ic n="shield" size={24} />
-            </div>
-            <div style={{ fontSize: '14px', color: C.mute }}>{selected.name}</div>
-            <div style={{ fontSize: '26px', fontWeight: 800 }}>₹{inr(advance)}</div>
-            <div style={{ display: 'flex', gap: '12px', margin: '8px 0' }}>
-              {[0, 1, 2, 3, 4, 5].map((i) => (
-                <i key={i} style={{ width: '14px', height: '14px', borderRadius: '50%', border: `2px solid ${C.g}`, background: i < pinCode.length ? C.g : 'transparent', display: 'inline-block' }} />
-              ))}
-            </div>
-            <div style={{ fontSize: '14px', color: C.mute }}>{T('Only you enter your PIN. Nobody else hears or sees it.')}</div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '10px' }}>
-            {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'].map((k, i) =>
-              k === '' ? <span key={i} /> : (
-                <button key={i} onClick={() => key(k)} aria-label={k} style={{ height: '56px', borderRadius: '14px', border: `1px solid ${C.line}`, background: '#FFF', color: C.ink, fontFamily: 'inherit', fontSize: '22px', fontWeight: 600, cursor: 'pointer' }}>{k}</button>
-              )
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* RECEIPT (demo data for now) */}
-      {currentScreen === 'receipt' && selected && (
-        <div style={pad}>
-          <Stepper done />
-          <div style={{ ...card, overflow: 'hidden' }}>
-            <div style={{ background: C.g, color: '#FFF', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '3px dashed #FFF' }}>
-              <span style={{ fontSize: '16px', fontWeight: 800 }}>{T('Warehouse receipt')}</span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'rgba(255,255,255,.9)', color: C.g, fontSize: '12px', fontWeight: 800, padding: '4px 12px', borderRadius: '12px' }}>
-                <Ic n="check" size={12} sw={2.6} /> {T('Active')}
-              </span>
-            </div>
-            <div style={{ padding: '4px 16px 10px' }}>
-              <Line a={selected.name} b={T(selected.location)} />
-              <Line a={crop} b={String(q)} />
-              <Line a="Grade" b="A" />
-              <Line a="Insurance" b={`₹${inr(selected.insured)}/t`} />
-              <Line a="Advance paid" b={`₹${inr(advance)}`} />
-              <Line a="No." b="GDM-2026-0418" last />
-            </div>
-          </div>
-          <button onClick={() => go('home')} style={outline}>{T('Book another slot')}</button>
-        </div>
-      )}
-
-      {/* AI PANEL */}
       {aiOpen && (
-        <div role="region" aria-live="polite" aria-label="AI mode" style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: '430px', background: '#FFF', borderRadius: '20px 20px 0 0', padding: '14px 16px 18px', zIndex: 60, boxShadow: '0 -10px 30px rgba(0,0,0,.2)', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '52%', overflow: 'hidden', boxSizing: 'border-box' }}>
+        <div role="region" aria-live="polite" aria-label="AI mode" style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: '430px', background: '#FFF', borderRadius: '20px 20px 0 0', padding: '16px 20px 24px', zIndex: 60, boxShadow: '0 -10px 30px rgba(0,0,0,.2)', display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '55%', overflow: 'hidden', boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '12px', fontWeight: 800, color: C.g }}>{status[astate] || ''}</span>
             <button onClick={toggleAI} aria-label="Stop" style={{ width: '36px', height: '36px', borderRadius: '10px', border: `1px solid ${C.line}`, background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -929,9 +895,12 @@ export function Router() {
                   <button key={i} onClick={() => chipTap(i)} style={{ border: `1px solid ${C.line}`, background: C.g2, color: C.ink, borderRadius: '20px', padding: '8px 14px', fontFamily: 'inherit', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>{c.l}</button>
                 ))}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <button className={astate === 'listen' ? 'micon' : ''} onClick={micTap} aria-label="Mic" disabled={astate === 'idle'} style={{ width: '60px', height: '60px', borderRadius: '50%', border: 'none', background: 'linear-gradient(135deg,#4F8CFF,#9B5CFF 55%,#FF5CAA)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: astate === 'idle' ? 0.4 : 1 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', marginTop: '6px' }}>
+                <div className="micon" style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'linear-gradient(135deg,#4F8CFF,#9B5CFF 55%,#FF5CAA)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Ic n="mic" size={26} color="#FFF" />
+                </div>
+                <button onClick={toggleAI} style={{ width: '100%', padding: '12px', borderRadius: '14px', border: 'none', background: '#B8402A', color: '#FFF', fontWeight: 800, fontSize: '15px', cursor: 'pointer', textAlign: 'center' }}>
+                  {T('Stop')}
                 </button>
               </div>
               {aerr && <p style={{ margin: 0, fontSize: '14px', color: C.mute }}>{e.err}</p>}
